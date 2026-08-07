@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Board Game Library</title>
+<meta name="description" content="What we can play tonight.">
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --ink: #14161a;
+    --muted: #666e7a;
+    --line: #e0e4e9;
+    --accent: #2f6fed;
+    --accent-ink: #ffffff;
+    --best: #157347;
+    --best-bg: #e4f4ea;
+    --stored: #8a6d3b;
+    --stored-bg: #fbf1de;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101216;
+      --card: #191c22;
+      --ink: #e9ebee;
+      --muted: #98a1ad;
+      --line: #2a2f38;
+      --accent: #5b8dff;
+      --accent-ink: #0c0f14;
+      --best: #6ee7a8;
+      --best-bg: #123227;
+      --stored: #e3b341;
+      --stored-bg: #33290f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px 64px; }
+
+  header { padding: 28px 0 18px; }
+  h1 { margin: 0 0 4px; font-size: clamp(24px, 4vw, 32px); letter-spacing: -0.02em; }
+  .tagline { color: var(--muted); margin: 0; font-size: 15px; }
+
+  .controls {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg);
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 18px;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .row + .row { margin-top: 10px; }
+  .label { font-size: 13px; color: var(--muted); margin-right: 2px; }
+
+  button.chip, select, input[type="search"] {
+    font: inherit; font-size: 14px;
+    padding: 7px 12px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  select, input[type="search"] { border-radius: 8px; cursor: auto; }
+  input[type="search"] { flex: 1 1 200px; min-width: 160px; }
+  button.chip:hover { border-color: var(--accent); }
+  button.chip[aria-pressed="true"] {
+    background: var(--accent); border-color: var(--accent);
+    color: var(--accent-ink); font-weight: 650;
+  }
+
+  .count { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
+
+  .grid {
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+  .game {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .game.is-best { border-color: var(--best); }
+  .game h2 { margin: 0; font-size: 17px; line-height: 1.3; }
+  .game h2 a { color: inherit; text-decoration: none; }
+  .game h2 a:hover { text-decoration: underline; text-decoration-color: var(--accent); }
+  .sub { color: var(--muted); font-size: 14px; margin: -4px 0 0; }
+  .meta { color: var(--muted); font-size: 13px; margin: 0; }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    font-size: 12px; font-weight: 600;
+    padding: 3px 9px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--muted);
+    white-space: nowrap;
+  }
+  .tag.players { color: var(--ink); }
+  .tag.best { background: var(--best-bg); color: var(--best); border-color: transparent; }
+  .tag.stored { background: var(--stored-bg); color: var(--stored); border-color: transparent; }
+
+  details.boxes { font-size: 13px; }
+  details.boxes summary { cursor: pointer; color: var(--accent); }
+  details.boxes ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); }
+
+  .empty { text-align: center; color: var(--muted); padding: 48px 16px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 13px; text-align: center; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Board Game Library</h1>
+  <p class="tagline">Pick something for game night.</p>
+</header>
+
+<div class="controls">
+  <div class="row">
+    <span class="label">Players</span>
+    <span id="playerChips"></span>
+  </div>
+  <div class="row">
+    <input type="search" id="q" placeholder="Search title or publisher…" autocomplete="off">
+    <select id="where">
+      <option value="shelf">On the shelf</option>
+      <option value="all">Everything</option>
+      <option value="storage">In storage</option>
+    </select>
+    <select id="sort">
+      <option value="title">A–Z</option>
+      <option value="players">Player count</option>
+      <option value="year">Newest first</option>
+    </select>
+  </div>
+</div>
+
+<p class="count" id="count"></p>
+<div class="grid" id="grid"></div>
+<div class="empty" id="empty" hidden>Nothing matches those filters.</div>
+
+<footer id="footer"></footer>
+
+</div>
+
+<script>
+"use strict";
+
+let GAMES = [];
+let players = null;   // null = any
+
+/* ---------- CSV (RFC 4180) ---------- */
+function parseCSV(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const out = [];
+  let row = [], field = "", inQ = false, i = 0;
+  while (i < text.length) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+        inQ = false; i++; continue;
+      }
+      field += c; i++; continue;
+    }
+    if (c === '"') { inQ = true; i++; continue; }
+    if (c === ",") { row.push(field); field = ""; i++; continue; }
+    if (c === "\r") { i++; continue; }
+    if (c === "\n") { row.push(field); out.push(row); row = []; field = ""; i++; continue; }
+    field += c; i++;
+  }
+  if (field !== "" || row.length) { row.push(field); out.push(row); }
+  return out.filter(r => r.length && !(r.length === 1 && r[0].trim() === ""));
+}
+
+/* "4-5" -> [4,5];  "2, 4" -> [2,4];  "" -> [] */
+function parseBest(s) {
+  const set = new Set();
+  for (const part of String(s || "").split(",")) {
+    const p = part.trim();
+    if (!p) continue;
+    const m = p.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (m) { for (let n = +m[1]; n <= +m[2]; n++) set.add(n); }
+    else if (/^\d+$/.test(p)) set.add(+p);
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
+/* ---------- build one entry per game, boxes nested ---------- */
+function build(rows, headers) {
+  const map = new Map();
+  for (const cells of rows) {
+    const r = {};
+    headers.forEach((h, i) => r[h] = cells[i] != null ? cells[i] : "");
+    const key = r.title.trim();
+    if (!key) continue;
+    if (!map.has(key)) {
+      map.set(key, {
+        title: key, boxes: [],
+        publisher: "", min: null, max: null, best: [], bggId: "", year: "",
+        anyShelf: false, anyStored: false
+      });
+    }
+    const g = map.get(key);
+    g.boxes.push({ sub: r.subtitle_or_edition, type: r.type, stored: r.in_storage === "yes", notes: r.notes });
+    if (!g.publisher && r.publisher) g.publisher = r.publisher;
+    if (g.min === null && r.min_players) g.min = +r.min_players;
+    if (g.max === null && r.max_players) g.max = +r.max_players;
+    if (!g.best.length) g.best = parseBest(r.best_players);
+    if (!g.bggId && r.bgg_id) g.bggId = r.bgg_id;
+    if (!g.year && r.bgg_year) g.year = r.bgg_year;
+    if (r.in_storage === "yes") g.anyStored = true; else g.anyShelf = true;
+  }
+  return [...map.values()];
+}
+
+/* ---------- filtering + rendering ---------- */
+function visible() {
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const where = document.getElementById("where").value;
+  const sort = document.getElementById("sort").value;
+
+  let list = GAMES.filter(g => {
+    if (where === "shelf" && !g.anyShelf) return false;
+    if (where === "storage" && !g.anyStored) return false;
+    if (players !== null) {
+      if (g.min === null || g.max === null) return false;
+      if (players < g.min || players > g.max) return false;
+    }
+    if (q) {
+      const hay = (g.title + " " + g.publisher + " " + g.boxes.map(b => b.sub).join(" ")).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const isBest = g => players !== null && g.best.includes(players);
+  list.sort((a, b) => {
+    if (players !== null) {                      // best-at matches float to the top
+      const d = (isBest(b) ? 1 : 0) - (isBest(a) ? 1 : 0);
+      if (d) return d;
+    }
+    if (sort === "year") return (+b.year || 0) - (+a.year || 0);
+    if (sort === "players") return (a.min || 99) - (b.min || 99) || (a.max || 0) - (b.max || 0);
+    return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+  });
+  return list;
+}
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function render() {
+  const grid = document.getElementById("grid");
+  const list = visible();
+  grid.innerHTML = "";
+  document.getElementById("empty").hidden = list.length > 0;
+
+  const frag = document.createDocumentFragment();
+  for (const g of list) {
+    const best = players !== null && g.best.includes(players);
+    const card = el("article", "game" + (best ? " is-best" : ""));
+
+    const h = el("h2");
+    if (g.bggId) {
+      const a = el("a", null, g.title);
+      a.href = "https://boardgamegeek.com/boardgame/" + g.bggId;
+      a.target = "_blank"; a.rel = "noopener";
+      h.appendChild(a);
+    } else h.textContent = g.title;
+    card.appendChild(h);
+
+    const subs = g.boxes.map(b => b.sub).filter(Boolean);
+    if (g.boxes.length === 1 && subs.length) card.appendChild(el("p", "sub", subs[0]));
+
+    const tags = el("div", "tags");
+    tags.appendChild(el("span", "tag players",
+      g.min === null ? "players ?" : (g.min === g.max ? g.min + " players" : g.min + "–" + g.max + " players")));
+    if (g.best.length) tags.appendChild(el("span", "tag best", "best at " + g.best.join(", ")));
+    if (!g.anyShelf && g.anyStored) tags.appendChild(el("span", "tag stored", "in storage"));
+    card.appendChild(tags);
+
+    const bits = [g.publisher, g.year].filter(Boolean).join(" · ");
+    if (bits) card.appendChild(el("p", "meta", bits));
+
+    if (g.boxes.length > 1) {
+      const d = el("details", "boxes");
+      d.appendChild(el("summary", null, g.boxes.length + " boxes"));
+      const ul = el("ul");
+      for (const b of g.boxes) {
+        const label = (b.sub || g.title) + (b.type === "expansion" ? " (expansion)" : "") + (b.stored ? " — in storage" : "");
+        ul.appendChild(el("li", null, label));
+      }
+      d.appendChild(ul);
+      card.appendChild(d);
+    }
+    frag.appendChild(card);
+  }
+  grid.appendChild(frag);
+
+  const boxes = list.reduce((n, g) => n + g.boxes.length, 0);
+  document.getElementById("count").textContent =
+    list.length + (list.length === 1 ? " game" : " games") +
+    (boxes !== list.length ? " (" + boxes + " boxes)" : "") +
+    (players !== null ? " that play with " + players : "");
+}
+
+/* ---------- controls ---------- */
+function buildChips() {
+  const host = document.getElementById("playerChips");
+  const mk = (label, value) => {
+    const b = el("button", "chip", label);
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(players === value));
+    b.onclick = () => {
+      players = (players === value) ? null : value;
+      [...host.querySelectorAll("button")].forEach(x =>
+        x.setAttribute("aria-pressed", String(x.dataset.v === String(players))));
+      render();
+    };
+    b.dataset.v = String(value);
+    return b;
+  };
+  const any = el("button", "chip", "Any");
+  any.type = "button";
+  any.dataset.v = "null";
+  any.setAttribute("aria-pressed", "true");
+  any.onclick = () => {
+    players = null;
+    [...host.querySelectorAll("button")].forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === "null")));
+    render();
+  };
+  host.appendChild(any);
+  for (let n = 1; n <= 8; n++) host.appendChild(mk(String(n), n));
+}
+
+document.getElementById("q").oninput = render;
+document.getElementById("where").onchange = render;
+document.getElementById("sort").onchange = render;
+
+fetch("games.csv", { cache: "no-cache" })
+  .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+  .then(text => {
+    const table = parseCSV(text);
+    GAMES = build(table.slice(1), table[0]);
+    buildChips();
+    render();
+    const boxes = GAMES.reduce((n, g) => n + g.boxes.length, 0);
+    document.querySelector(".tagline").textContent =
+      GAMES.length + " games · " + boxes + " boxes · pick something for game night.";
+    document.getElementById("footer").innerHTML =
+      'Player counts and “best at” figures from <a href="https://boardgamegeek.com" target="_blank" rel="noopener">BoardGameGeek</a> community polls.';
+  })
+  .catch(e => {
+    document.getElementById("count").textContent = "Could not load games.csv (" + e.message + ").";
+  });
+</script>
+</body>
+</html>
