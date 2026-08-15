@@ -130,6 +130,7 @@
       <option value="title">A–Z</option>
       <option value="players">Player count</option>
       <option value="year">Newest first</option>
+      <option value="purchased">Recently bought</option>
     </select>
   </div>
 </div>
@@ -185,6 +186,15 @@ function parseBest(s) {
   return [...set].sort((a, b) => a - b);
 }
 
+/* "2020-09-22" -> "Sep 22, 2020".  Parsed by hand: new Date("2020-09-22")
+   is UTC midnight and renders as the day before in western time zones. */
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function fmtDate(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || "");
+  return m ? MONTHS[+m[2] - 1] + " " + (+m[3]) + ", " + m[1] : "";
+}
+
 /* ---------- build one entry per game, boxes nested ---------- */
 function build(rows, headers) {
   const map = new Map();
@@ -196,7 +206,7 @@ function build(rows, headers) {
     if (!map.has(key)) {
       map.set(key, {
         title: key, boxes: [],
-        publisher: "", min: null, max: null, best: [], bggId: "", year: ""
+        publisher: "", min: null, max: null, best: [], bggId: "", year: "", bought: ""
       });
     }
     const g = map.get(key);
@@ -207,6 +217,8 @@ function build(rows, headers) {
     if (!g.best.length) g.best = parseBest(r.best_players);
     if (!g.bggId && r.bgg_id) g.bggId = r.bgg_id;
     if (!g.year && r.bgg_year) g.year = r.bgg_year;
+    /* boxes of one game can arrive years apart — the game's date is the first one */
+    if (r.purchase_date && (!g.bought || r.purchase_date < g.bought)) g.bought = r.purchase_date;
   }
   return [...map.values()];
 }
@@ -233,6 +245,13 @@ function visible() {
     if (players !== null) {                      // best-at matches float to the top
       const d = (isBest(b) ? 1 : 0) - (isBest(a) ? 1 : 0);
       if (d) return d;
+    }
+    if (sort === "purchased") {                  // undated games sink to the bottom
+      if (a.bought !== b.bought) {
+        if (!a.bought) return 1;
+        if (!b.bought) return -1;
+        return b.bought < a.bought ? -1 : 1;
+      }
     }
     if (sort === "year") return (+b.year || 0) - (+a.year || 0);
     if (sort === "players") return (a.min || 99) - (b.min || 99) || (a.max || 0) - (b.max || 0);
@@ -277,7 +296,8 @@ function render() {
     if (g.best.length) tags.appendChild(el("span", "tag best", "best at " + g.best.join(", ")));
     card.appendChild(tags);
 
-    const bits = [g.publisher, g.year].filter(Boolean).join(" · ");
+    const bits = [g.publisher, g.year, g.bought ? "bought " + fmtDate(g.bought) : ""]
+      .filter(Boolean).join(" · ");
     if (bits) card.appendChild(el("p", "meta", bits));
 
     if (g.boxes.length > 1) {
